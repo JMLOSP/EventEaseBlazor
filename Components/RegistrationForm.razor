@@ -1,0 +1,316 @@
+@namespace EventEase.Components
+@using EventEase.Models
+@using EventEase.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IUserSessionService UserSessionService
+@inject NavigationManager Navigation
+
+<div class="card shadow-lg">
+    <div class="card-header bg-primary text-white">
+        <h3 class="mb-0">
+            <i class="fas fa-user-plus me-2"></i>Registro de Usuario
+        </h3>
+    </div>
+    <div class="card-body">
+        @if (IsLoading)
+        {
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Registrando...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="@RegistrationModel" OnValidSubmit="@HandleValidSubmit" FormName="RegistrationForm">
+                <DataAnnotationsValidator />
+                
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>@ErrorMessage
+                    </div>
+                }
+                
+                @if (!string.IsNullOrEmpty(SuccessMessage))
+                {
+                    <div class="alert alert-success" role="alert">
+                        <i class="fas fa-check-circle me-2"></i>@SuccessMessage
+                    </div>
+                }
+
+                <div class="row">
+                    <!-- Personal Information -->
+                    <div class="col-md-6">
+                        <h5 class="mb-3 text-primary">Información Personal</h5>
+                        
+                        <div class="mb-3">
+                            <label for="firstName" class="form-label">Nombre *</label>
+                            <InputText @bind-Value="RegistrationModel.FirstName" 
+                                      class="form-control" 
+                                      id="firstName" 
+                                      placeholder="Ingrese su nombre" />
+                            <ValidationMessage For="@(() => RegistrationModel.FirstName)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="lastName" class="form-label">Apellido *</label>
+                            <InputText @bind-Value="RegistrationModel.LastName" 
+                                      class="form-control" 
+                                      id="lastName" 
+                                      placeholder="Ingrese su apellido" />
+                            <ValidationMessage For="@(() => RegistrationModel.LastName)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="dateOfBirth" class="form-label">Fecha de Nacimiento *</label>
+                            <InputDate @bind-Value="RegistrationModel.DateOfBirth" 
+                                      class="form-control" 
+                                      id="dateOfBirth" 
+                                      max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                            <ValidationMessage For="@(() => RegistrationModel.DateOfBirth)" class="text-danger" />
+                            @if (!RegistrationModel.IsAdult())
+                            {
+                                <div class="text-warning small">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    Debe ser mayor de 18 años para registrarse
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Dirección</label>
+                            <InputTextArea @bind-Value="RegistrationModel.Address" 
+                                          class="form-control" 
+                                          id="address" 
+                                          rows="2"
+                                          placeholder="Ingrese su dirección (opcional)" />
+                            <ValidationMessage For="@(() => RegistrationModel.Address)" class="text-danger" />
+                        </div>
+                    </div>
+
+                    <!-- Contact Information -->
+                    <div class="col-md-6">
+                        <h5 class="mb-3 text-primary">Información de Contacto</h5>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-envelope"></i>
+                                </span>
+                                <InputText @bind-Value="RegistrationModel.Email" 
+                                          class="form-control" 
+                                          id="email" 
+                                          type="email"
+                                          placeholder="ejemplo@correo.com" />
+                            </div>
+                            <ValidationMessage For="@(() => RegistrationModel.Email)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Teléfono *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-phone"></i>
+                                </span>
+                                <InputText @bind-Value="RegistrationModel.Phone" 
+                                          class="form-control" 
+                                          id="phone" 
+                                          placeholder="+34 123 456 789" />
+                            </div>
+                            <ValidationMessage For="@(() => RegistrationModel.Phone)" class="text-danger" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña *</label>
+                            <div class="input-group">
+                                <InputText @bind-Value="RegistrationModel.Password" 
+                                          class="form-control" 
+                                          id="password" 
+                                          type="@(ShowPassword ? "text" : "password")"
+                                          placeholder="Mínimo 8 caracteres" />
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        @onclick="TogglePasswordVisibility">
+                                    <i class="fas @(ShowPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                </button>
+                            </div>
+                            <ValidationMessage For="@(() => RegistrationModel.Password)" class="text-danger" />
+                            <div class="form-text">
+                                <small>Debe contener: 1 minúscula, 1 mayúscula, 1 número y 1 carácter especial</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirmPassword" class="form-label">Confirmar Contraseña *</label>
+                            <div class="input-group">
+                                <InputText @bind-Value="RegistrationModel.ConfirmPassword" 
+                                          class="form-control" 
+                                          id="confirmPassword" 
+                                          type="@(ShowConfirmPassword ? "text" : "password")"
+                                          placeholder="Repita la contraseña" />
+                                <button class="btn btn-outline-secondary" 
+                                        type="button" 
+                                        @onclick="ToggleConfirmPasswordVisibility">
+                                    <i class="fas @(ShowConfirmPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                                </button>
+                            </div>
+                            <ValidationMessage For="@(() => RegistrationModel.ConfirmPassword)" class="text-danger" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Terms and Conditions -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="form-check">
+                            <InputCheckbox @bind-Value="RegistrationModel.AcceptTerms" 
+                                          class="form-check-input" 
+                                          id="acceptTerms" />
+                            <label class="form-check-label" for="acceptTerms">
+                                Acepto los <a href="#" @onclick="ShowTermsModal" @onclick:preventDefault="true">términos y condiciones</a> *
+                            </label>
+                            <ValidationMessage For="@(() => RegistrationModel.AcceptTerms)" class="text-danger d-block" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <button type="submit" 
+                                class="btn btn-primary btn-lg w-100" 
+                                disabled="@(!RegistrationModel.IsAdult() || IsLoading)">
+                            @if (IsLoading)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <i class="fas fa-user-plus me-2"></i>Registrarse
+                        </button>
+                    </div>
+                </div>
+
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        ¿Ya tienes una cuenta? 
+                        <a href="/login" class="text-primary">Inicia sesión aquí</a>
+                    </small>
+                </div>
+            </EditForm>
+        }
+    </div>
+</div>
+
+<!-- Terms and Conditions Modal -->
+@if (ShowTermsModalFlag)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Términos y Condiciones</h5>
+                    <button type="button" class="btn-close" @onclick="CloseTermsModal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6>1. Aceptación de los Términos</h6>
+                    <p>Al registrarse en EventEase, usted acepta cumplir con estos términos y condiciones.</p>
+                    
+                    <h6>2. Uso del Servicio</h6>
+                    <p>EventEase es una plataforma para la gestión y registro de eventos. Usted se compromete a usar el servicio de manera responsable.</p>
+                    
+                    <h6>3. Privacidad</h6>
+                    <p>Sus datos personales serán tratados conforme a nuestra política de privacidad y la normativa vigente de protección de datos.</p>
+                    
+                    <h6>4. Responsabilidades del Usuario</h6>
+                    <p>Usted es responsable de mantener la confidencialidad de su contraseña y de todas las actividades realizadas con su cuenta.</p>
+                    
+                    <h6>5. Modificaciones</h6>
+                    <p>EventEase se reserva el derecho de modificar estos términos en cualquier momento, notificando a los usuarios de forma adecuada.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseTermsModal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" @onclick="AcceptTermsFromModal">Aceptar Términos</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public EventCallback<UserRegistrationModel> OnRegistrationSuccess { get; set; }
+    
+    private UserRegistrationModel RegistrationModel = new();
+    private bool IsLoading = false;
+    private bool ShowPassword = false;
+    private bool ShowConfirmPassword = false;
+    private bool ShowTermsModalFlag = false;
+    private string ErrorMessage = string.Empty;
+    private string SuccessMessage = string.Empty;
+
+    private async Task HandleValidSubmit()
+    {
+        if (!RegistrationModel.IsAdult())
+        {
+            ErrorMessage = "Debe ser mayor de 18 años para registrarse.";
+            return;
+        }
+
+        IsLoading = true;
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+
+        try
+        {
+            var success = await UserSessionService.RegisterUserAsync(RegistrationModel);
+            
+            if (success)
+            {
+                SuccessMessage = "¡Registro exitoso! Bienvenido a EventEase.";
+                await OnRegistrationSuccess.InvokeAsync(RegistrationModel);
+                
+                // Redirect to home page after successful registration
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                ErrorMessage = "Error en el registro. El email ya está en uso o ocurrió un problema.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        ShowPassword = !ShowPassword;
+    }
+
+    private void ToggleConfirmPasswordVisibility()
+    {
+        ShowConfirmPassword = !ShowConfirmPassword;
+    }
+
+    private void ShowTermsModal()
+    {
+        ShowTermsModalFlag = true;
+    }
+
+    private void CloseTermsModal()
+    {
+        ShowTermsModalFlag = false;
+    }
+
+    private void AcceptTermsFromModal()
+    {
+        RegistrationModel.AcceptTerms = true;
+        CloseTermsModal();
+    }
+}

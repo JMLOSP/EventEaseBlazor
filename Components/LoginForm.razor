@@ -1,0 +1,188 @@
+@namespace EventEase.Components
+@using EventEase.Services
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@inject IUserSessionService UserSessionService
+@inject NavigationManager Navigation
+
+<div class="card shadow">
+    <div class="card-header bg-primary text-white">
+        <h4 class="mb-0">
+            <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+        </h4>
+    </div>
+    <div class="card-body">
+        @if (IsLoading)
+        {
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Iniciando sesión...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <EditForm Model="@loginModel" OnValidSubmit="@HandleValidSubmit" FormName="LoginForm">
+                <DataAnnotationsValidator />
+                
+                @if (!string.IsNullOrEmpty(ErrorMessage))
+                {
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>@ErrorMessage
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-envelope"></i>
+                        </span>
+                        <InputText @bind-Value="loginModel.Email" 
+                                  class="form-control" 
+                                  id="email" 
+                                  type="email"
+                                  placeholder="Ingrese su email" />
+                    </div>
+                    <ValidationMessage For="@(() => loginModel.Email)" class="text-danger" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="password" class="form-label">Contraseña</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-lock"></i>
+                        </span>
+                        <InputText @bind-Value="loginModel.Password" 
+                                  class="form-control" 
+                                  id="password" 
+                                  type="@(ShowPassword ? "text" : "password")"
+                                  placeholder="Ingrese su contraseña" />
+                        <button class="btn btn-outline-secondary" 
+                                type="button" 
+                                @onclick="TogglePasswordVisibility">
+                            <i class="fas @(ShowPassword ? "fa-eye-slash" : "fa-eye")"></i>
+                        </button>
+                    </div>
+                    <ValidationMessage For="@(() => loginModel.Password)" class="text-danger" />
+                </div>
+
+                <div class="mb-3 form-check">
+                    <InputCheckbox @bind-Value="loginModel.RememberMe" 
+                                  class="form-check-input" 
+                                  id="rememberMe" />
+                    <label class="form-check-label" for="rememberMe">
+                        Recordarme
+                    </label>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" 
+                            class="btn btn-primary btn-lg" 
+                            disabled="@IsLoading">
+                        @if (IsLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
+                        <i class="fas fa-sign-in-alt me-2"></i>Iniciar Sesión
+                    </button>
+                </div>
+
+                <div class="text-center mt-3">
+                    <a href="#" class="text-muted small">¿Olvidaste tu contraseña?</a>
+                </div>
+            </EditForm>
+
+            <hr class="my-4">
+            
+            <div class="text-center">
+                <p class="text-muted mb-2">¿No tienes una cuenta?</p>
+                <a href="/register" class="btn btn-outline-primary">
+                    <i class="fas fa-user-plus me-2"></i>Regístrate
+                </a>
+            </div>
+
+            <!-- Demo Credentials -->
+            <div class="mt-4">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h6 class="card-title text-muted">
+                            <i class="fas fa-info-circle me-2"></i>Credenciales de Prueba
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <strong>Usuario Demo:</strong><br>
+                                    Email: demo@example.com<br>
+                                    Contraseña: Demo123!
+                                </small>
+                            </div>
+                            <div class="col-md-6">
+                                <small class="text-muted">
+                                    <strong>Usuario Admin:</strong><br>
+                                    Email: admin@eventease.com<br>
+                                    Contraseña: Admin123!
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnLoginSuccess { get; set; }
+    
+    private UserLoginModel loginModel = new();
+    private bool IsLoading = false;
+    private bool ShowPassword = false;
+    private string ErrorMessage = string.Empty;
+
+    public class UserLoginModel
+    {
+        [Required(ErrorMessage = "El email es requerido")]
+        [EmailAddress(ErrorMessage = "El formato del email no es válido")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "La contraseña es requerida")]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        IsLoading = true;
+        ErrorMessage = string.Empty;
+
+        try
+        {
+            var success = await UserSessionService.LoginAsync(loginModel.Email, loginModel.Password);
+            
+            if (success)
+            {
+                await OnLoginSuccess.InvokeAsync();
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                ErrorMessage = "Email o contraseña incorrectos. Intente nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error al iniciar sesión: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        ShowPassword = !ShowPassword;
+    }
+}

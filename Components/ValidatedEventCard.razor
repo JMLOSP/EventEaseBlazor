@@ -1,0 +1,299 @@
+@namespace EventEase.Components
+@using Microsoft.AspNetCore.Components
+@using EventEase.Validation
+
+<div class="card m-2 border rounded shadow-sm @GetCardClasses()">
+    <div class="card-body">
+        @if (IsValid)
+        {
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <h5 class="card-title text-primary">@EventName</h5>
+                @if (ShowValidationIndicator)
+                {
+                    <span class="badge bg-success">
+                        <i class="fas fa-check"></i> Válido
+                    </span>
+                }
+            </div>
+            
+            <div class="event-details">
+                <p class="card-text">
+                    <i class="fas fa-calendar-alt me-2 text-primary"></i>
+                    <strong>Fecha:</strong> @EventDate.ToString("dd/MM/yyyy HH:mm")
+                </p>
+                <p class="card-text">
+                    <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                    <strong>Ubicación:</strong> @EventLocation
+                </p>
+                @if (!string.IsNullOrEmpty(Description))
+                {
+                    <p class="card-text">
+                        <i class="fas fa-info-circle me-2 text-primary"></i>
+                        <strong>Descripción:</strong> @Description
+                    </p>
+                }
+                @if (MaxCapacity > 0)
+                {
+                    <p class="card-text">
+                        <i class="fas fa-users me-2 text-primary"></i>
+                        <strong>Capacidad:</strong> @MaxCapacity asistentes
+                    </p>
+                }
+                @if (!string.IsNullOrEmpty(ContactEmail))
+                {
+                    <p class="card-text">
+                        <i class="fas fa-envelope me-2 text-primary"></i>
+                        <strong>Contacto:</strong> 
+                        <a href="mailto:@ContactEmail" class="text-decoration-none">@ContactEmail</a>
+                    </p>
+                }
+            </div>
+
+            @if (ShowActions)
+            {
+                <div class="card-actions mt-3 pt-2 border-top">
+                    <button class="btn btn-primary btn-sm me-2" @onclick="OnRegisterClick">
+                        <i class="fas fa-user-plus me-1"></i>Registrarse
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="OnViewDetailsClick">
+                        <i class="fas fa-eye me-1"></i>Ver Detalles
+                    </button>
+                </div>
+            }
+        }
+        else
+        {
+            <div class="alert alert-danger mb-0" role="alert">
+                <h6 class="alert-heading d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Errores de Validación
+                </h6>
+                <ul class="mb-0 small">
+                    @foreach (var error in ValidationErrors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+                
+                @if (ShowDebugInfo)
+                {
+                    <details class="mt-2">
+                        <summary class="small text-muted">Información de Debug</summary>
+                        <div class="small text-muted mt-1">
+                            <p><strong>Nombre:</strong> "@EventName"</p>
+                            <p><strong>Fecha:</strong> @EventDate</p>
+                            <p><strong>Ubicación:</strong> "@EventLocation"</p>
+                        </div>
+                    </details>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string _eventName = string.Empty;
+    private DateTime _eventDate = DateTime.MinValue;
+    private string _eventLocation = string.Empty;
+    private string _description = string.Empty;
+    private string _contactEmail = string.Empty;
+    private int _maxCapacity = 0;
+    private List<string> _validationErrors = new();
+
+    [Parameter] public string EventName 
+    { 
+        get => _eventName;
+        set 
+        {
+            if (_eventName != value)
+            {
+                _eventName = value;
+                ValidateComponent();
+            }
+        }
+    }
+
+    [Parameter] public DateTime EventDate 
+    { 
+        get => _eventDate;
+        set 
+        {
+            if (_eventDate != value)
+            {
+                _eventDate = value;
+                ValidateComponent();
+            }
+        }
+    }
+
+    [Parameter] public string EventLocation 
+    { 
+        get => _eventLocation;
+        set 
+        {
+            if (_eventLocation != value)
+            {
+                _eventLocation = value;
+                ValidateComponent();
+            }
+        }
+    }
+
+    [Parameter] public string Description 
+    { 
+        get => _description;
+        set 
+        {
+            if (_description != value)
+            {
+                _description = value;
+                ValidateComponent();
+            }
+        }
+    }
+
+    [Parameter] public string ContactEmail 
+    { 
+        get => _contactEmail;
+        set 
+        {
+            if (_contactEmail != value)
+            {
+                _contactEmail = value;
+                ValidateComponent();
+            }
+        }
+    }
+
+    [Parameter] public int MaxCapacity 
+    { 
+        get => _maxCapacity;
+        set 
+        {
+            if (_maxCapacity != value)
+            {
+                _maxCapacity = value;
+                ValidateComponent();
+            }
+        }
+    }
+
+    [Parameter] public bool ShowActions { get; set; } = true;
+    [Parameter] public bool ShowValidationIndicator { get; set; } = false;
+    [Parameter] public bool ShowDebugInfo { get; set; } = false;
+    [Parameter] public EventCallback OnRegisterClicked { get; set; }
+    [Parameter] public EventCallback OnViewDetailsClicked { get; set; }
+
+    public bool IsValid => !ValidationErrors.Any();
+    public IReadOnlyList<string> ValidationErrors => _validationErrors.AsReadOnly();
+
+    protected override void OnInitialized()
+    {
+        ValidateComponent();
+    }
+
+    private void ValidateComponent()
+    {
+        _validationErrors.Clear();
+
+        // Validate EventName using custom attribute logic
+        var eventNameValidator = new EventNameAttribute();
+        if (!eventNameValidator.IsValid(EventName))
+        {
+            _validationErrors.Add(eventNameValidator.ErrorMessage ?? "Nombre del evento inválido.");
+        }
+        else if (string.IsNullOrWhiteSpace(EventName))
+        {
+            _validationErrors.Add("El nombre del evento es requerido.");
+        }
+        else if (EventName.Length > 100)
+        {
+            _validationErrors.Add("El nombre del evento no puede exceder 100 caracteres.");
+        }
+
+        // Validate EventDate using custom attribute logic
+        var futureDateValidator = new FutureDateAttribute();
+        if (EventDate == DateTime.MinValue)
+        {
+            _validationErrors.Add("La fecha del evento es requerida.");
+        }
+        else if (!futureDateValidator.IsValid(EventDate))
+        {
+            _validationErrors.Add("La fecha del evento debe ser en el futuro.");
+        }
+        else if (EventDate > DateTime.Today.AddYears(5))
+        {
+            _validationErrors.Add("La fecha del evento no puede ser más de 5 años en el futuro.");
+        }
+
+        // Validate EventLocation using custom attribute logic
+        var locationValidator = new LocationValidationAttribute();
+        if (string.IsNullOrWhiteSpace(EventLocation))
+        {
+            _validationErrors.Add("La ubicación del evento es requerida.");
+        }
+        else if (!locationValidator.IsValid(EventLocation))
+        {
+            _validationErrors.Add(locationValidator.ErrorMessage ?? "Ubicación inválida.");
+        }
+        else if (EventLocation.Length > 200)
+        {
+            _validationErrors.Add("La ubicación del evento no puede exceder 200 caracteres.");
+        }
+
+        // Validate optional fields
+        if (!string.IsNullOrEmpty(Description) && Description.Length > 500)
+        {
+            _validationErrors.Add("La descripción no puede exceder 500 caracteres.");
+        }
+
+        if (!string.IsNullOrEmpty(ContactEmail))
+        {
+            var emailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+            if (!System.Text.RegularExpressions.Regex.IsMatch(ContactEmail, emailPattern))
+            {
+                _validationErrors.Add("El formato del email no es válido.");
+            }
+        }
+
+        if (MaxCapacity > 0)
+        {
+            var capacityValidator = new CapacityRangeAttribute();
+            if (!capacityValidator.IsValid(MaxCapacity))
+            {
+                _validationErrors.Add(capacityValidator.FormatErrorMessage("Capacidad"));
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private string GetCardClasses()
+    {
+        var classes = new List<string>();
+        
+        if (!IsValid)
+        {
+            classes.Add("border-danger");
+        }
+        else
+        {
+            classes.Add("border-success");
+        }
+
+        return string.Join(" ", classes);
+    }
+
+    private async Task OnRegisterClick()
+    {
+        if (IsValid)
+        {
+            await OnRegisterClicked.InvokeAsync();
+        }
+    }
+
+    private async Task OnViewDetailsClick()
+    {
+        await OnViewDetailsClicked.InvokeAsync();
+    }
+}

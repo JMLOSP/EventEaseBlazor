@@ -1,0 +1,84 @@
+﻿@namespace EventEase.Components
+@using Microsoft.AspNetCore.Components
+@using System.ComponentModel.DataAnnotations
+
+<div class="card m-2 p-3 border rounded shadow-sm @GetCardClasses()">
+    @if (IsValid)
+    {
+        <h3>@EventName</h3>
+        <p><strong>Fecha:</strong> @EventDate.ToString("dd/MM/yyyy")</p>
+        <p><strong>Ubicación:</strong> @EventLocation</p>
+    }
+    else
+    {
+        <div class="alert alert-danger" role="alert">
+            <h4 class="alert-heading">Error de validación</h4>
+            <ul class="mb-0">
+                @foreach (var error in ValidationErrors)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string EventName { get; set; } = string.Empty;
+    [Parameter] public DateTime EventDate { get; set; } = DateTime.MinValue;
+    [Parameter] public string EventLocation { get; set; } = string.Empty;
+
+    private List<string> _validationErrors = new();
+    public bool IsValid => !ValidationErrors.Any();
+    public IReadOnlyList<string> ValidationErrors => _validationErrors.AsReadOnly();
+
+    protected override void OnParametersSet()
+    {
+        ValidateComponent();
+        base.OnParametersSet();
+    }
+
+    private void ValidateComponent()
+    {
+        _validationErrors.Clear();
+
+        // Validate EventName
+        if (string.IsNullOrWhiteSpace(EventName))
+        {
+            _validationErrors.Add("El nombre del evento es requerido.");
+        }
+        else if (EventName.Length > 100)
+        {
+            _validationErrors.Add("El nombre del evento no puede exceder 100 caracteres.");
+        }
+
+        // Validate EventDate
+        if (EventDate == DateTime.MinValue)
+        {
+            _validationErrors.Add("La fecha del evento es requerida.");
+        }
+        else if (EventDate < DateTime.Today)
+        {
+            _validationErrors.Add("La fecha del evento no puede ser en el pasado.");
+        }
+        else if (EventDate > DateTime.Today.AddYears(5))
+        {
+            _validationErrors.Add("La fecha del evento no puede ser más de 5 años en el futuro.");
+        }
+
+        // Validate EventLocation
+        if (string.IsNullOrWhiteSpace(EventLocation))
+        {
+            _validationErrors.Add("La ubicación del evento es requerida.");
+        }
+        else if (EventLocation.Length > 200)
+        {
+            _validationErrors.Add("La ubicación del evento no puede exceder 200 caracteres.");
+        }
+    }
+
+    private string GetCardClasses()
+    {
+        return IsValid ? "border-success" : "border-danger";
+    }
+}
